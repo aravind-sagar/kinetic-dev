@@ -45,15 +45,13 @@ Kinetic uses a custom design system focused on:
 
 ```text
 kinetic-technical-suite/
+├── public/               # Static assets (favicons, manifest)
 ├── src/
+│   ├── assets/           # Component-specific resources (images, icons)
 │   ├── components/       # Reusable UI components (Layout, Sidebar, TopNav)
-│   ├── data/             # Static datasets (Shortcuts, icons)
+│   ├── data/             # Static datasets (Shortcuts)
 │   ├── pages/            # Feature views (Editor, Converters, Dashboard)
 │   ├── lib/              # Utility functions and shared logic
-│   ├── App.tsx           # Route definitions & Theme Context
-│   └── main.tsx          # Application entry point
-├── public/               # Static assets
-└── index.html            # Main HTML template
 ```
 
 ---
