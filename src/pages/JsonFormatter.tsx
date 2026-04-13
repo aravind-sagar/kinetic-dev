@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Download, Copy, Trash2, Settings2, Activity, CheckCircle2, FileJson, Check } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
-
+import { storage } from '../lib/storage';
 const initialJson = {
   project: {
     name: "Kinetic Terminal",
@@ -29,14 +29,27 @@ const initialJson = {
 };
 
 export default function JsonFormatter() {
-  const [jsonStr, setJsonStr] = useState(JSON.stringify(initialJson, null, 2));
+  const [jsonStr, setJsonStr] = useState(() => storage.get('json_formatter_input') || JSON.stringify(initialJson, null, 2));
   const [indent, setIndent] = useState(2);
   const [copied, setCopied] = useState(false);
   const [rules, setRules] = useState({
     sortKeys: true,
-    quoteProperties: true,
     removeWhitespace: false
   });
+
+  React.useEffect(() => {
+    const t = setTimeout(() => {
+      storage.set('json_formatter_input', jsonStr);
+    }, 500);
+    return () => clearTimeout(t);
+  }, [jsonStr]);
+
+  const handleReset = () => {
+    if (window.confirm("Are you sure you want to reset?")) {
+      setJsonStr('');
+      storage.remove('json_formatter_input');
+    }
+  };
 
   const sortObject = (obj: any): any => {
     if (obj === null || typeof obj !== 'object' || Array.isArray(obj)) return obj;
@@ -46,9 +59,9 @@ export default function JsonFormatter() {
     }, {});
   };
 
-  const processJson = () => {
+  const processJson = (input: string = jsonStr, updateState: boolean = true) => {
     try {
-      let parsed = JSON.parse(jsonStr);
+      let parsed = JSON.parse(input);
       if (rules.sortKeys) {
         parsed = sortObject(parsed);
       }
@@ -61,11 +74,22 @@ export default function JsonFormatter() {
         result = JSON.stringify(parsed, null, space);
       }
       
-      setJsonStr(result);
+      if (updateState) {
+        setJsonStr(result);
+      }
+      return result;
     } catch (e) {
-      alert("Invalid JSON structure detected.");
+      return null;
     }
   };
+
+  React.useEffect(() => {
+    // Auto-beautify when rules change if valid
+    const formatted = processJson(jsonStr, false);
+    if (formatted && formatted !== jsonStr) {
+      setJsonStr(formatted);
+    }
+  }, [rules, indent]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(jsonStr);
@@ -102,11 +126,11 @@ export default function JsonFormatter() {
         </div>
         <div className="flex gap-3">
           <button 
-            onClick={() => { setRules({ ...rules, removeWhitespace: false }); setTimeout(processJson, 0); }}
-            className="px-6 py-2 bg-surface-container-high text-primary rounded-lg text-sm font-semibold border border-outline-variant/10 hover:border-primary/20 transition-all flex items-center gap-2"
+            onClick={handleReset}
+            className="px-6 py-2 bg-surface-container-high text-error rounded-lg text-sm font-semibold border border-outline-variant/10 hover:border-error/20 transition-all flex items-center gap-2 hover:bg-error/10"
           >
-            <CheckCircle2 size={16} />
-            Beautify
+            <Trash2 size={16} />
+            Reset
           </button>
           <button 
             onClick={handleDownload}
@@ -216,13 +240,6 @@ export default function JsonFormatter() {
               </div>
             </div>
             
-            <button 
-              onClick={processJson}
-              className="w-full mt-8 py-3 bg-primary text-on-primary font-bold text-xs rounded-lg shadow-lg shadow-primary/20 hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-            >
-              <FileJson size={14} />
-              FORMAT JSON
-            </button>
           </div>
 
           <div className="bg-surface-container-high rounded-xl p-6 flex-1 flex flex-col justify-between border border-outline-variant/5">

@@ -1,12 +1,30 @@
 import React, { useState } from 'react';
 import { Columns, ArrowRightLeft, FileJson, Trash2, Copy, Check } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
+import { storage } from '../lib/storage';
 
 export default function DiffChecker() {
-  const [input1, setInput1] = useState('{\n  "id": 1,\n  "name": "Kinetic",\n  "status": "active"\n}');
-  const [input2, setInput2] = useState('{\n  "id": 1,\n  "name": "Kinetic Suite",\n  "status": "pending",\n  "version": "1.0"\n}');
+  const [input1, setInput1] = useState(() => storage.get('diff_input1') || '{\n  "id": 1,\n  "name": "Kinetic",\n  "status": "active"\n}');
+  const [input2, setInput2] = useState(() => storage.get('diff_input2') || '{\n  "id": 1,\n  "name": "Kinetic Suite",\n  "status": "pending",\n  "version": "1.0"\n}');
   const [diffResult, setDiffResult] = useState<any[]>([]);
   const [isComparing, setIsComparing] = useState(false);
+
+  React.useEffect(() => {
+    storage.set('diff_input1', input1);
+  }, [input1]);
+
+  React.useEffect(() => {
+    storage.set('diff_input2', input2);
+  }, [input2]);
+
+  const handleReset = () => {
+    setInput1('');
+    setInput2('');
+    storage.remove('diff_input1');
+    storage.remove('diff_input2');
+    setDiffResult([]);
+    setIsComparing(false);
+  };
 
   const formatJson = (side: 1 | 2) => {
     try {
@@ -51,13 +69,21 @@ export default function DiffChecker() {
           <h2 className="text-3xl font-bold font-headline tracking-tight mb-2">JSON Diff Checker</h2>
           <p className="text-on-surface-variant text-sm font-body">Detect structural and value mutations between two JSON objects.</p>
         </div>
-        <button 
-          onClick={compareJson}
-          className="kinetic-gradient text-on-primary px-8 py-3 rounded-xl font-bold text-sm shadow-xl shadow-primary/20 active:scale-95 transition-all flex items-center gap-2"
-        >
-          <ArrowRightLeft size={18} />
-          RUN COMPARISON
-        </button>
+        <div className="flex gap-4">
+          <button 
+            onClick={handleReset}
+            className="text-on-surface-variant hover:text-error px-4 py-3 rounded-xl font-bold text-sm transition-all border border-outline-variant/20 hover:border-error/50"
+          >
+            RESET
+          </button>
+          <button 
+            onClick={compareJson}
+            className="kinetic-gradient text-on-primary px-8 py-3 rounded-xl font-bold text-sm shadow-xl shadow-primary/20 active:scale-95 transition-all flex items-center gap-2"
+          >
+            <ArrowRightLeft size={18} />
+            RUN COMPARISON
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

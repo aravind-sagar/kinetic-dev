@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { Search, Moon, Sun, X } from 'lucide-react';
+import { useState } from 'react';
+import { Search, Moon, Sun, X, Settings } from 'lucide-react';
 import { useTheme } from '../../App';
 import { useNavigate } from 'react-router-dom';
+import { isPersistentMode, setPersistentMode } from '../../lib/storage';
 
 const TOOLS = [
   { label: 'Markdown Editor', path: '/editor', keywords: ['editor', 'markdown', 'md', 'mermaid', 'preview'] },
@@ -9,6 +10,7 @@ const TOOLS = [
   { label: 'Diff Checker', path: '/diff-checker', keywords: ['diff', 'compare', 'checker'] },
   { label: 'VS Code Shortcuts', path: '/shortcuts', keywords: ['shortcuts', 'vscode', 'keybinding', 'keyboard'] },
   { label: 'File Converters', path: '/converters', keywords: ['converter', 'pdf', 'word', 'docx', 'convert'] },
+  { label: 'Repositories', path: '/repositories', keywords: ['github', 'git', 'repo', 'code', 'repository'] },
   { label: 'Dashboard', path: '/', keywords: ['dashboard', 'home'] },
 ];
 
@@ -16,6 +18,8 @@ export function TopNav() {
   const { theme, toggleTheme } = useTheme();
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [persistentMode, setPersistentModeState] = useState(isPersistentMode());
   const navigate = useNavigate();
 
   const filtered = query.trim().length > 0
@@ -74,6 +78,37 @@ export function TopNav() {
         >
           {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
         </button>
+        <div className="relative">
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className="text-on-surface/70 hover:text-primary transition-all p-2 hover:bg-surface-container-high rounded-full"
+            title="Settings"
+          >
+            <Settings size={20} />
+          </button>
+          
+          {showSettings && (
+            <div className="absolute top-full right-0 mt-2 w-64 bg-surface-container-high border border-outline-variant/20 rounded-xl shadow-2xl z-50 overflow-hidden p-4">
+              <h3 className="text-sm font-bold text-on-surface mb-4">Settings</h3>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-on-surface/80">Persistent Mode</span>
+                <button
+                  onClick={() => {
+                    const next = !persistentMode;
+                    setPersistentModeState(next);
+                    setPersistentMode(next);
+                  }}
+                  className={`w-10 h-5 rounded-full relative transition-colors ${persistentMode ? 'bg-primary' : 'bg-surface-container-highest'}`}
+                >
+                  <div className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-on-primary transition-transform ${persistentMode ? 'translate-x-5' : ''}`} />
+                </button>
+              </div>
+              <p className="text-xs text-on-surface/50 mt-2">
+                When enabled, your work is saved locally.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

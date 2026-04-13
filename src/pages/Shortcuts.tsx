@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { Keyboard, Search, Filter, ChevronLeft, ChevronRight, Monitor, Laptop } from 'lucide-react';
+import { Keyboard, Search, Filter, ChevronLeft, ChevronRight, Monitor, Laptop, Upload, RotateCcw } from 'lucide-react';
 import shortcutsData from '../data/shortcuts-data.json';
 import { cn } from '@/src/lib/utils';
+import { storage } from '../lib/storage';
 
 export default function Shortcuts() {
   const [os, setOs] = useState<'mac' | 'win'>('win');
@@ -10,8 +11,16 @@ export default function Shortcuts() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
+  const [customShortcuts, setCustomShortcuts] = useState<any[]>(() => {
+    const saved = storage.get('custom_shortcuts');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const displayedShortcuts = customShortcuts || shortcutsData;
+
   const filteredShortcuts = useMemo(() => {
-    return shortcutsData.filter(s => {
+    return displayedShortcuts.filter(s => {
       const matchesCategory = activeCategory === 'ALL' || s.category === activeCategory;
       const matchesSearch = s.action.toLowerCase().includes(searchQuery.toLowerCase()) || 
                            s.id.toLowerCase().includes(searchQuery.toLowerCase());
@@ -35,13 +44,69 @@ export default function Shortcuts() {
     { label: 'DEBUG', icon: Laptop, color: 'secondary' },
   ];
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+        if (!Array.isArray(json)) throw new Error('Expected a JSON array.');
+        
+        const parsed = json.map((item, idx) => {
+          if (!item.key && !item.command) throw new Error(`Missing key or command at index ${idx}`);
+          const action = item.command ? item.command.split('.').pop()?.replace(/([A-Z])/g, ' $1').trim().toUpperCase() : 'UNKNOWN';
+          return {
+            id: item.command || `custom-${idx}`,
+            action: action,
+            category: 'CUSTOM',
+            mac: item.key ? item.key.replace(/ctrl/gi, 'cmd').split('+') : [],
+            win: item.key ? item.key.split('+') : []
+          };
+        });
+
+        storage.set('custom_shortcuts', JSON.stringify(parsed));
+        setCustomShortcuts(parsed);
+        setErrorMsg('');
+        setActiveCategory('ALL');
+      } catch (err: any) {
+        setErrorMsg(`Failed to parse shortcuts: ${err.message}`);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = ''; // reset input
+  };
+
+  const handleResetDefaults = () => {
+    storage.remove('custom_shortcuts');
+    setCustomShortcuts(null);
+    setActiveCategory('ALL');
+  };
+
   return (
     <div className="space-y-8 pb-12">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <h2 className="text-4xl font-headline font-bold text-on-surface tracking-tight mb-2">VS Code Shortcuts</h2>
-          <p className="text-on-surface-variant max-w-xl font-body">Master your workflow with the ultimate keybinding reference. Optimized for Kinetic High-Velocity Engineering.</p>
+          <p className="text-on-surface-variant max-w-xl font-body mb-4">Master your workflow with the ultimate keybinding reference. Optimized for Kinetic High-Velocity Engineering.</p>
+          <div className="flex flex-wrap items-center gap-4">
+            <label className="cursor-pointer text-xs font-bold uppercase tracking-widest text-primary hover:text-primary/80 flex items-center gap-1 transition-colors">
+              <Upload size={14} />
+              Import your own VS Code shortcuts
+              <input type="file" accept=".json" className="hidden" onChange={handleFileUpload} />
+            </label>
+            {customShortcuts && (
+              <button 
+                onClick={handleResetDefaults}
+                className="text-xs font-bold uppercase tracking-widest text-error hover:text-error/80 flex items-center gap-1 transition-colors"
+              >
+                <RotateCcw size={14} />
+                Reset to defaults
+              </button>
+            )}
+            {errorMsg && <span className="text-xs text-error font-mono">{errorMsg}</span>}
+          </div>
         </div>
         <div className="flex gap-2 p-1 bg-surface-container rounded-xl">
           <button 
@@ -69,6 +134,16 @@ export default function Shortcuts() {
           )}
         >
           <span className="text-xs font-bold uppercase tracking-widest">All</span>
+        </div>
+        <div 
+          onClick={() => { setActiveCategory('CUSTOM'); setCurrentPage(1); }}
+          className={cn(
+            "p-4 rounded-xl border transition-all cursor-pointer group flex flex-col items-center justify-center text-center",
+            activeCategory === 'CUSTOM' ? "bg-primary/10 border-primary/40" : "bg-surface-container-high border-outline-variant/10 hover:border-primary/20",
+            !customShortcuts && "opacity-50 pointer-events-none"
+          )}
+        >
+          <span className="text-xs font-bold uppercase tracking-widest">Custom</span>
         </div>
         {categories.map((cat) => (
           <div 

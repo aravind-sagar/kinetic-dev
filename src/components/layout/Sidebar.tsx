@@ -6,16 +6,17 @@ import {
   Braces, 
   FileDiff, 
   Keyboard, 
-  RefreshCw, 
+  RefreshCw,  
   Settings, 
   Terminal,
-  Plus
+  Github
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: FileCode, label: 'Editor', path: '/editor' },
+  { icon: Github, label: 'Repositories', path: '/repositories' },
   { icon: Braces, label: 'JSON Formatter', path: '/json-formatter' },
   { icon: FileDiff, label: 'Diff Checker', path: '/diff-checker' },
   { icon: Keyboard, label: 'Shortcuts', path: '/shortcuts' },

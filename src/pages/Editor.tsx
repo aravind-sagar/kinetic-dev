@@ -13,15 +13,20 @@ import {
   ListOrdered, 
   CheckSquare,
   Download,
-  Monitor,
-  Smartphone,
   ChevronDown,
   Heading1,
   Heading2,
-  Minus
+  Minus,
+  Plus,
+  Trash2,
+  Edit2,
+  FileText,
+  Check
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
+import { storage } from '../lib/storage';
+import { cn } from '@/src/lib/utils';
 
 mermaid.initialize({
   startOnLoad: false,
@@ -97,21 +102,49 @@ function useDebounce<T>(value: T, delay: number): T {
   return debounced;
 }
 
+interface Doc {
+  id: string;
+  name: string;
+  content: string;
+}
+
 export default function Editor() {
-  // We keep markdown in state for the debounced preview
-  // but write to the textarea via ref to preserve native undo
-  const [markdown, setMarkdown] = useState(initialMarkdown);
+  const [docs, setDocs] = useState<Doc[]>(() => {
+    const saved = storage.get('editor_docs');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return [{ id: 'default', name: 'Untitled Doc', content: initialMarkdown }];
+  });
+  const [activeDocId, setActiveDocId] = useState<string>(() => storage.get('editor_active_doc') || 'default');
+  const [leftWidth, setLeftWidth] = useState(50);
+  const [editingDocId, setEditingDocId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
+
+  const activeDoc = docs.find(d => d.id === activeDocId) || docs[0];
+
+  const [markdown, setMarkdown] = useState(activeDoc ? activeDoc.content : initialMarkdown);
   const debouncedMarkdown = useDebounce(markdown, 300);
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Sync textarea content on first render
   useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.value = initialMarkdown;
+    storage.set('editor_docs', JSON.stringify(docs));
+    storage.set('editor_active_doc', activeDocId);
+  }, [docs, activeDocId]);
+
+  useEffect(() => {
+    if (textareaRef.current && activeDoc) {
+      textareaRef.current.value = activeDoc.content;
+      setMarkdown(activeDoc.content);
     }
-  }, []);
+  }, [activeDocId]);
+
+  useEffect(() => {
+    setDocs(prev => prev.map(d => d.id === activeDocId ? { ...d, content: debouncedMarkdown } : d));
+  }, [debouncedMarkdown, activeDocId]);
 
   /**
    * The key fix: we use setRangeText() to insert text into the textarea.
@@ -201,6 +234,49 @@ export default function Editor() {
     ],
   ];
 
+  const handleCreateDoc = () => {
+    const newDoc: Doc = { id: Math.random().toString(36).substr(2, 9), name: 'Untitled Doc', content: '' };
+    setDocs([...docs, newDoc]);
+    setActiveDocId(newDoc.id);
+  };
+
+  const handleDeleteDoc = (id: string) => {
+    if (docs.length === 1) return; // Prevent deleting last doc
+    const newDocs = docs.filter(d => d.id !== id);
+    setDocs(newDocs);
+    if (activeDocId === id) setActiveDocId(newDocs[0].id);
+  };
+
+  const handleStartRename = (id: string, currentName: string) => {
+    setEditingDocId(id);
+    setEditingName(currentName);
+  };
+
+  const handleFinishRename = () => {
+    if (editingDocId) {
+      setDocs(docs.map(d => d.id === editingDocId ? { ...d, name: editingName || 'Untitled Doc' } : d));
+      setEditingDocId(null);
+    }
+  };
+
+  const handleDragStart = (e: React.PointerEvent) => {
+    e.preventDefault();
+    const handleMove = (eMove: PointerEvent) => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      let newWidth = ((eMove.clientX - rect.left) / rect.width) * 100;
+      if (newWidth < 20) newWidth = 20;
+      if (newWidth > 80) newWidth = 80;
+      setLeftWidth(newWidth);
+    };
+    const handleUp = () => {
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+    };
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+  };
+
   return (
     <div className="h-[calc(100vh-8rem)] flex flex-col">
       {/* Toolbar */}
@@ -249,32 +325,97 @@ export default function Editor() {
         </div>
       </div>
 
-      {/* Editor Content */}
+      {/* Editor Content Layout */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Input Area */}
-        <section className="w-1/2 flex flex-col bg-surface-container-lowest border-r border-outline-variant/10">
-          <div className="flex items-center justify-between px-6 py-2 border-b border-outline-variant/10">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Source Editor</span>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">Markdown / UTF-8</span>
+        
+        {/* Document Sidebar */}
+        <div className="w-64 border-r border-outline-variant/10 bg-surface-container flex flex-col shrink-0">
+          <div className="p-4 border-b border-outline-variant/10 flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface">Documents</span>
+            <button onClick={handleCreateDoc} className="p-1 hover:bg-primary/20 text-primary rounded transition-colors" title="New Document">
+              <Plus size={14} />
+            </button>
           </div>
-          <textarea
-            ref={textareaRef}
-            defaultValue={initialMarkdown}
-            onChange={e => setMarkdown(e.target.value)}
-            className="flex-1 p-6 font-mono text-sm leading-relaxed bg-transparent border-none focus:ring-0 text-on-surface/90 resize-none outline-none"
-            spellCheck={false}
-          />
-        </section>
+          <div className="flex-1 overflow-y-auto">
+            {docs.map(doc => (
+              <div 
+                key={doc.id} 
+                className={cn(
+                  "group flex items-center justify-between px-4 py-3 border-b border-outline-variant/5 cursor-pointer transition-colors",
+                  doc.id === activeDocId ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-surface-container-high border-l-2 border-l-transparent"
+                )}
+                onClick={() => setActiveDocId(doc.id)}
+              >
+                <div className="flex items-center gap-3 overflow-hidden flex-1">
+                  <FileText size={14} className={doc.id === activeDocId ? "text-primary" : "text-outline"} />
+                  {editingDocId === doc.id ? (
+                    <input
+                      autoFocus
+                      className="bg-surface-container-lowest text-on-surface text-sm px-2 py-1 rounded outline-none border border-primary w-full"
+                      value={editingName}
+                      onChange={e => setEditingName(e.target.value)}
+                      onBlur={handleFinishRename}
+                      onKeyDown={e => { if (e.key === 'Enter') handleFinishRename(); }}
+                      onClick={e => e.stopPropagation()}
+                    />
+                  ) : (
+                    <span className={cn("text-sm truncate", doc.id === activeDocId ? "text-primary font-bold" : "text-on-surface-variant")}>
+                      {doc.name}
+                    </span>
+                  )}
+                </div>
+                {editingDocId !== doc.id && (
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleStartRename(doc.id, doc.name); }}
+                      className="p-1.5 text-outline hover:text-on-surface rounded"
+                    >
+                      <Edit2 size={12} />
+                    </button>
+                    {docs.length > 1 && (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleDeleteDoc(doc.id); }}
+                        className="p-1.5 text-error/70 hover:text-error hover:bg-error/10 rounded"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
 
-        {/* Preview Area */}
-        <section className="w-1/2 flex flex-col bg-surface">
-          <div className="flex items-center justify-between px-6 py-2 border-b border-outline-variant/10">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-secondary">Live Preview</span>
-            <div className="flex gap-2">
-              <Monitor size={14} className="text-on-surface-variant" />
-              <Smartphone size={14} className="text-on-surface-variant/30" />
+        {/* Editor and Preview Split */}
+        <div ref={containerRef} className="flex-1 flex overflow-hidden relative">
+          
+          {/* Input Area */}
+          <section style={{ width: `${leftWidth}%` }} className="flex flex-col bg-surface-container-lowest border-r border-outline-variant/10 shrink-0">
+            <div className="flex items-center justify-between px-6 py-2 border-b border-outline-variant/10">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Source Editor</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">Markdown / UTF-8</span>
             </div>
-          </div>
+            <textarea
+              ref={textareaRef}
+              defaultValue={activeDoc?.content || initialMarkdown}
+              onChange={e => setMarkdown(e.target.value)}
+              className="flex-1 p-6 font-mono text-sm leading-relaxed bg-transparent border-none focus:ring-0 text-on-surface/90 resize-none outline-none"
+              spellCheck={false}
+            />
+          </section>
+
+          {/* Resizer */}
+          <div 
+            className="w-1 bg-outline-variant/20 hover:bg-primary cursor-col-resize z-10 transition-colors shrink-0"
+            onPointerDown={handleDragStart}
+          />
+
+          {/* Preview Area */}
+          <section style={{ width: `${100 - leftWidth}%` }} className="flex flex-col bg-surface overflow-hidden shrink-0">
+            <div className="flex items-center justify-between px-6 py-2 border-b border-outline-variant/10">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-secondary">Live Preview</span>
+            </div>
           <div ref={previewRef} className="flex-1 p-10 overflow-y-auto md-preview">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
@@ -300,7 +441,8 @@ export default function Editor() {
               {debouncedMarkdown}
             </ReactMarkdown>
           </div>
-        </section>
+          </section>
+        </div>
       </div>
 
       {/* Footer Stats */}

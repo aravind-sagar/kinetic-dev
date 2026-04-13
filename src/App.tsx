@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { createContext, useContext, useState, useEffect } from 'react';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { storage } from './lib/storage';
 import { Sidebar } from './components/layout/Sidebar';
 import { TopNav } from './components/layout/TopNav';
 import Dashboard from './pages/Dashboard';
@@ -8,6 +9,7 @@ import JsonFormatter from './pages/JsonFormatter';
 import Shortcuts from './pages/Shortcuts';
 import Converters from './pages/Converters';
 import DiffChecker from './pages/DiffChecker';
+import Repositories from './pages/Repositories';
 
 export type Theme = 'dark' | 'light';
 export const ThemeContext = createContext<{ theme: Theme; toggleTheme: () => void }>({
@@ -18,6 +20,26 @@ export const useTheme = () => useContext(ThemeContext);
 
 export default function App() {
   const [theme, setTheme] = useState<Theme>('dark');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [hasRestoredRoute, setHasRestoredRoute] = useState(false);
+
+  useEffect(() => {
+    // Restore route on load
+    if (!hasRestoredRoute) {
+      const lastRoute = storage.get('last_opened_route');
+      if (lastRoute && lastRoute !== location.pathname) {
+        navigate(lastRoute, { replace: true });
+      }
+      setHasRestoredRoute(true);
+    }
+  }, [hasRestoredRoute, location.pathname, navigate]);
+
+  useEffect(() => {
+    if (hasRestoredRoute) {
+      storage.set('last_opened_route', location.pathname);
+    }
+  }, [location.pathname, hasRestoredRoute]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -48,6 +70,7 @@ export default function App() {
               <Route path="/diff-checker" element={<DiffChecker />} />
               <Route path="/shortcuts" element={<Shortcuts />} />
               <Route path="/converters" element={<Converters />} />
+              <Route path="/repositories" element={<Repositories />} />
             </Routes>
           </div>
         </main>
