@@ -10,6 +10,7 @@ import Shortcuts from './pages/Shortcuts';
 import Converters from './pages/Converters';
 import DiffChecker from './pages/DiffChecker';
 import Repositories from './pages/Repositories';
+import { Analytics } from '@vercel/analytics/react';
 
 export type Theme = 'dark' | 'light';
 export const ThemeContext = createContext<{ theme: Theme; toggleTheme: () => void }>({
@@ -76,6 +77,7 @@ export default function App() {
         </main>
 
       </div>
+      <Analytics />
     </ThemeContext.Provider>
   );
 }
