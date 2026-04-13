@@ -39,6 +39,13 @@ const tools = [
     color: 'error',
     path: '/converters'
   },
+  { 
+    title: 'Repositories', 
+    desc: 'Manage and quick-navigate your essential codebases.', 
+    icon: 'inventory_2',
+    color: 'primary',
+    path: '/repositories'
+  },
 ];
 
 export default function Dashboard() {
