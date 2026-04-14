@@ -40,11 +40,11 @@ const tools = [
     path: '/converters'
   },
   { 
-    title: 'Repositories', 
-    desc: 'Manage and quick-navigate your essential codebases.', 
+    title: 'Pages', 
+    desc: 'Manage and quick-navigate your essential codebases and web references.', 
     icon: 'inventory_2',
     color: 'primary',
-    path: '/repositories'
+    path: '/pages'
   },
 ];
 
@@ -66,8 +66,8 @@ export default function Dashboard() {
           <span className="inline-block px-3 py-1 rounded-full bg-secondary/10 text-secondary text-[10px] font-bold uppercase tracking-widest mb-4">
             System Operational
           </span>
-          <h2 className="text-5xl font-bold font-headline tracking-tighter text-on-surface mb-4">
-            {greeting}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-container">Dev</span>.
+          <h2 className="text-5xl font-bold font-headline tracking-tighter text-on-surface mb-4 flex items-center flex-wrap">
+            {greeting},&nbsp;<span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-container inline-block pb-1 pr-1 -mr-1">Dev</span>.
           </h2>
           <p className="text-on-surface/60 max-w-lg font-body leading-relaxed">
             Ready to optimize your workflow? Kinetic Terminal is ready to process your snippets and transformations.

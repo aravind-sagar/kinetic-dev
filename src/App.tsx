@@ -3,13 +3,16 @@ import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { storage } from './lib/storage';
 import { Sidebar } from './components/layout/Sidebar';
 import { TopNav } from './components/layout/TopNav';
+import { SyncManager } from './components/SyncManager';
 import Dashboard from './pages/Dashboard';
 import Editor from './pages/Editor';
 import JsonFormatter from './pages/JsonFormatter';
 import Shortcuts from './pages/Shortcuts';
 import Converters from './pages/Converters';
 import DiffChecker from './pages/DiffChecker';
-import Repositories from './pages/Repositories';
+import PagesBoard from './pages/PagesBoard';
+import SignIn from './pages/SignIn';
+import SignUp from './pages/SignUp';
 import { Analytics } from '@vercel/analytics/react';
 
 export type Theme = 'dark' | 'light';
@@ -71,12 +74,15 @@ export default function App() {
               <Route path="/diff-checker" element={<DiffChecker />} />
               <Route path="/shortcuts" element={<Shortcuts />} />
               <Route path="/converters" element={<Converters />} />
-              <Route path="/repositories" element={<Repositories />} />
+              <Route path="/pages" element={<PagesBoard />} />
+              <Route path="/signin" element={<SignIn />} />
+              <Route path="/signup" element={<SignUp />} />
             </Routes>
           </div>
         </main>
 
       </div>
+      <SyncManager />
       <Analytics />
     </ThemeContext.Provider>
   );
