@@ -11,7 +11,7 @@ export default defineConfig(({mode}) => {
       react(), 
       tailwindcss(),
       devServer({
-        entry: 'api/index.ts',
+        entry: 'api/[...route].ts',
         injectClientScript: false,
         // Only Hono handles /api/* — all other paths fall through to Vite SPA
         exclude: [/^\/(?!api($|\/))/],
