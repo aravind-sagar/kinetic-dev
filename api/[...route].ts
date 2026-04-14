@@ -10,13 +10,14 @@ type Variables = {
   user: any;
 };
 
-const app = new Hono<{ Variables: Variables }>().basePath('/api');
+const app = new Hono<{ Variables: Variables }>();
 
-app.get('/hello', (c) => {
+app.get('/api/hello', (c) => {
   return c.json({ message: 'Hello from Kinetic Backend!' });
 });
 
-app.all('/auth/*', (c) => auth.handler(c.req.raw));
+// Better Auth handler expects the full request object
+app.on(['POST', 'GET'], '/api/auth/*', (c) => auth.handler(c.req.raw));
 
 // Future DB API routes go here
 
@@ -30,7 +31,7 @@ const protectedRoute = async (c: Context<{ Variables: Variables }>, next: any) =
   await next();
 };
 
-app.post('/sync/push', protectedRoute, async (c) => {
+app.post('/api/sync/push', protectedRoute, async (c) => {
   const user = c.get('user');
   const body = await c.req.json();
   const payload = body.payload; // Record<string, string | null>
@@ -87,7 +88,7 @@ app.post('/sync/push', protectedRoute, async (c) => {
   }
 });
 
-app.get('/sync/pull', protectedRoute, async (c) => {
+app.get('/api/sync/pull', protectedRoute, async (c) => {
   const user = c.get('user');
   try {
     // Pull from DB
@@ -106,7 +107,7 @@ app.get('/sync/pull', protectedRoute, async (c) => {
   }
 });
 
-app.get('/sync/export', protectedRoute, async (c) => {
+app.get('/api/sync/export', protectedRoute, async (c) => {
   const user = c.get('user');
   try {
     const docs = await db.select().from(schema.markdownDocs).where(eq(schema.markdownDocs.userId, user.id));
@@ -134,7 +135,7 @@ app.get('/sync/export', protectedRoute, async (c) => {
   }
 });
 
-app.post('/sync/import', protectedRoute, async (c) => {
+app.post('/api/sync/import', protectedRoute, async (c) => {
   const user = c.get('user');
   try {
     const body = await c.req.json();
