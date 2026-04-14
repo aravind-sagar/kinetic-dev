@@ -2,8 +2,8 @@ import { config } from 'dotenv';
 config({ path: ['.env.local', '.env'] });
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { db } from './db';
-import * as schema from './db/schema';
+import { db } from './db/index.js';
+import * as schema from './db/schema.js';
 import { passkey } from '@better-auth/passkey';
 import { twoFactor } from 'better-auth/plugins';
 

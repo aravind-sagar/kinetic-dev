@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import { handle } from 'hono/vercel';
-import { auth } from '../src/auth';
-import { db } from '../src/db';
-import * as schema from '../src/db/schema';
+import { auth } from '../src/auth.js';
+import { db } from '../src/db/index.js';
+import * as schema from '../src/db/schema.js';
 import { eq } from 'drizzle-orm';
 import { Context } from 'hono';
 
