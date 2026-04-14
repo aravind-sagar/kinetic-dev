@@ -12,12 +12,20 @@ type Variables = {
 
 const app = new Hono<{ Variables: Variables }>();
 
-app.get('/api/hello', (c) => {
+// DEBUG: Verify that Vercel is indeed stripping /api
+app.use('*', async (c, next) => {
+  console.log(`[Hono Debug] Final Path: ${c.req.path}`);
+  await next();
+});
+
+app.get('/hello', (c) => {
   return c.json({ message: 'Hello from Kinetic Backend!' });
 });
 
-// Better Auth handler expects the full request object
-app.on(['POST', 'GET'], '/api/auth/*', (c) => auth.handler(c.req.raw));
+// Better Auth matches /auth/* after Vercel strips /api
+app.on(['POST', 'GET'], '/auth/*', (c) => {
+  return auth.handler(c.req.raw);
+});
 
 // Future DB API routes go here
 
@@ -31,7 +39,7 @@ const protectedRoute = async (c: Context<{ Variables: Variables }>, next: any) =
   await next();
 };
 
-app.post('/api/sync/push', protectedRoute, async (c) => {
+app.post('/sync/push', protectedRoute, async (c) => {
   const user = c.get('user');
   const body = await c.req.json();
   const payload = body.payload; // Record<string, string | null>
@@ -41,7 +49,6 @@ app.post('/api/sync/push', protectedRoute, async (c) => {
       if (key === 'editor_docs' && value) {
         const docs = JSON.parse(value as string);
         for (const doc of docs) {
-          // simple upsert
           await db.insert(schema.markdownDocs).values({
             id: doc.id,
             userId: user.id,
@@ -88,10 +95,9 @@ app.post('/api/sync/push', protectedRoute, async (c) => {
   }
 });
 
-app.get('/api/sync/pull', protectedRoute, async (c) => {
+app.get('/sync/pull', protectedRoute, async (c) => {
   const user = c.get('user');
   try {
-    // Pull from DB
     const docs = await db.select().from(schema.markdownDocs).where(eq(schema.markdownDocs.userId, user.id));
     const repos = await db.select().from(schema.pages).where(eq(schema.pages.userId, user.id));
     const jsonFmt = await db.select().from(schema.jsonFormatterState).where(eq(schema.jsonFormatterState.userId, user.id)).limit(1);
@@ -107,15 +113,13 @@ app.get('/api/sync/pull', protectedRoute, async (c) => {
   }
 });
 
-app.get('/api/sync/export', protectedRoute, async (c) => {
+app.get('/sync/export', protectedRoute, async (c) => {
   const user = c.get('user');
   try {
     const docs = await db.select().from(schema.markdownDocs).where(eq(schema.markdownDocs.userId, user.id));
     const repos = await db.select().from(schema.pages).where(eq(schema.pages.userId, user.id));
     const jsonFmt = await db.select().from(schema.jsonFormatterState).where(eq(schema.jsonFormatterState.userId, user.id)).limit(1);
     
-    // Add additional settings tables here in future
-
     const exportManifest = {
       version: 1,
       timestamp: new Date().toISOString(),
@@ -135,17 +139,14 @@ app.get('/api/sync/export', protectedRoute, async (c) => {
   }
 });
 
-app.post('/api/sync/import', protectedRoute, async (c) => {
+app.post('/sync/import', protectedRoute, async (c) => {
   const user = c.get('user');
   try {
     const body = await c.req.json();
     if (!body || body.version !== 1 || !body.data) {
       return c.json({ error: 'Malformed export file' }, 400);
     }
-
-    const { editor_docs, saved_pages, json_formatter_input } = body.data;
-
-    // Process editor docs
+    const { editor_docs, saved_pages } = body.data;
     if (Array.isArray(editor_docs)) {
       for (const doc of editor_docs) {
         await db.insert(schema.markdownDocs).values({
@@ -156,12 +157,10 @@ app.post('/api/sync/import', protectedRoute, async (c) => {
           updatedAt: new Date(doc.updatedAt || Date.now())
         }).onConflictDoUpdate({
           target: schema.markdownDocs.id,
-          set: { content: doc.content, updatedAt: new Date() } // Simple conflict resolution
+          set: { content: doc.content, updatedAt: new Date() }
         });
       }
     }
-
-    // Process pages
     if (Array.isArray(saved_pages)) {
       for (const page of saved_pages) {
         await db.insert(schema.pages).values({
@@ -179,7 +178,6 @@ app.post('/api/sync/import', protectedRoute, async (c) => {
         });
       }
     }
-
     return c.json({ success: true });
   } catch(e) {
     return c.json({ error: 'Import failed' }, 500);

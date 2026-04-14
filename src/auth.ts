@@ -29,6 +29,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
 export const auth = betterAuth({
   appName: APP_NAME,
   baseURL: process.env.BETTER_AUTH_URL,
+  basePath: '/auth',
   database: drizzleAdapter(db, {
     provider: 'pg',
     schema: { ...schema },
