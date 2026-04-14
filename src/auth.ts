@@ -9,6 +9,10 @@ import { twoFactor } from 'better-auth/plugins';
 
 const APP_NAME = 'Kinetic Technical Suite';
 
+if (!process.env.BETTER_AUTH_SECRET && process.env.NODE_ENV === 'production') {
+  throw new Error('[auth] BETTER_AUTH_SECRET is not set — check Vercel environment variables');
+}
+
 // Build social providers object only for configured providers
 const socialProviders: Record<string, { clientId: string; clientSecret: string }> = {};
 
