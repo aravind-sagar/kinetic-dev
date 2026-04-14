@@ -4,19 +4,24 @@ import { auth } from '../src/auth';
 import { db } from '../src/db';
 import * as schema from '../src/db/schema';
 import { eq } from 'drizzle-orm';
+import { Context } from 'hono';
 
-const app = new Hono().basePath('/api');
+type Variables = {
+  user: any;
+};
+
+const app = new Hono<{ Variables: Variables }>().basePath('/api');
 
 app.get('/hello', (c) => {
   return c.json({ message: 'Hello from Kinetic Backend!' });
 });
 
-app.on(['POST', 'GET'], '/auth/**', (c) => auth.handler(c.req.raw));
+app.all('/auth/*', (c) => auth.handler(c.req.raw));
 
 // Future DB API routes go here
 
 // Middleware to protect routes
-const protectedRoute = async (c: any, next: any) => {
+const protectedRoute = async (c: Context<{ Variables: Variables }>, next: any) => {
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
   if (!session) {
     return c.json({ error: 'Unauthorized' }, 401);
