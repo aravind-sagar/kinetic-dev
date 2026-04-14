@@ -22,8 +22,8 @@ app.get('/hello', (c) => {
   return c.json({ message: 'Hello from Kinetic Backend!' });
 });
 
-// Better Auth matches /auth/* after Vercel strips /api
-app.on(['POST', 'GET'], '/auth/*', (c) => {
+// Better Auth matches /auth/** after Vercel strips /api
+app.on(['POST', 'GET'], '/auth/**', (c) => {
   return auth.handler(c.req.raw);
 });
 
